@@ -5,7 +5,7 @@ const router = express.Router();
 // CREATE
 router.post('/users', (req, res) => {
     const { name, email, age } = req.body;
-    const query = 'INSERT INTO users (name, email, age) VALUES (?, ?, ?)';
+    const query = 'INSERT INTO my_table (name, email, age) VALUES (?, ?, ?)';
     db.query(query, [name, email, age], (err, result) => {
         if (err) return res.status(500).send(err);
         res.status(201).send({ id: result.insertId, name, email, age });
@@ -14,7 +14,7 @@ router.post('/users', (req, res) => {
 
 // READ ALL
 router.get('/users', (req, res) => {
-    db.query('SELECT * FROM users', (err, results) => {
+    db.query('SELECT * FROM my_table', (err, results) => {
         if (err) return res.status(500).send(err);
         res.status(200).send(results);
     });
@@ -23,7 +23,7 @@ router.get('/users', (req, res) => {
 // READ ONE
 router.get('/users/:id', (req, res) => {
     const { id } = req.params;
-    db.query('SELECT * FROM users WHERE id = ?', [id], (err, results) => {
+    db.query('SELECT * FROM my_table WHERE id = ?', [id], (err, results) => {
         if (err) return res.status(500).send(err);
         if (results.length === 0) return res.status(404).send({ message: 'User not found' });
         res.status(200).send(results[0]);
@@ -34,7 +34,7 @@ router.get('/users/:id', (req, res) => {
 router.put('/users/:id', (req, res) => {
     const { id } = req.params;
     const { name, email, age } = req.body;
-    const query = 'UPDATE users SET name = ?, email = ?, age = ? WHERE id = ?';
+    const query = 'UPDATE my_table SET name = ?, email = ?, age = ? WHERE id = ?';
     db.query(query, [name, email, age, id], (err, result) => {
         if (err) return res.status(500).send(err);
         res.status(200).send({ message: 'User updated successfully' });
@@ -44,7 +44,7 @@ router.put('/users/:id', (req, res) => {
 // DELETE
 router.delete('/users/:id', (req, res) => {
     const { id } = req.params;
-    db.query('DELETE FROM users WHERE id = ?', [id], (err, result) => {
+    db.query('DELETE FROM my_table WHERE id = ?', [id], (err, result) => {
         if (err) return res.status(500).send(err);
         res.status(200).send({ message: 'User deleted successfully' });
     });
