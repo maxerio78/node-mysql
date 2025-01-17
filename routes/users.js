@@ -2,6 +2,10 @@ const express = require('express');
 const db = require('../db/connection');
 const router = express.Router();
 
+router.get('/hello', (req, res) => {
+    res.status(200).send("Hello World");
+});
+
 // CREATE
 router.post('/users', (req, res) => {
     const { name, email, age } = req.body;
