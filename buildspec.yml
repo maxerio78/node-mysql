@@ -7,6 +7,8 @@ env:
     IMAGE_REPO_NAME: "node-mysql"           # ชื่อ ECR repository
     IMAGE_TAG: "latest"                     # หรือใช้ commit hash: CODEBUILD_RESOLVED_SOURCE_VERSION
     ACCOUNT_ID: "058264398861"               # AWS Account ID ของคุณ
+    K8S_NAMESPACE: "default"                 # Namespace ใน Kubernetes
+    DEPLOYMENT_FILE: "k8s/deployment.yaml"   # ไฟล์ manifests ของ Deployment
 
 phases:
   install:
@@ -18,9 +20,9 @@ phases:
       - npm -v
       - aws --version
 
-      - echo "Installing kubectl from us-east-1..."
+      - echo "Installing kubectl from us-west-2..."
       - CLUSTER_VERSION=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)
-      - curl -o kubectl https://amazon-eks.s3.us-east-1.amazonaws.com/${CLUSTER_VERSION}/2023-11-14/bin/linux/amd64/kubectl
+      - curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/${CLUSTER_VERSION}/2023-11-14/bin/linux/amd64/kubectl
       - chmod +x kubectl
       - mv kubectl /usr/local/bin/
       - kubectl version --client
