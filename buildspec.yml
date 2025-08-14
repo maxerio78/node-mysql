@@ -19,26 +19,17 @@ phases:
       - node -v
       - npm -v
       - aws --version
-
-      - echo "Installing kubectl from us-west-2..."
-      - CLUSTER_VERSION=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)
-      - curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/${CLUSTER_VERSION}/2023-11-14/bin/linux/arm64/kubectl
-      - chmod +x kubectl
-      - mv kubectl /usr/local/bin/
-      - kubectl version --client
+      - echo "Installing kubectl..."
+      - curl -o kubectl https://amazon-eks.s3.$AWS_REGION.amazonaws.com/$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)/2025-01-17/bin/linux/amd64/kubectl
+      - chmod +x ./kubectl
+      - mv ./kubectl /usr/local/bin/
 
   pre_build:
     commands:
       - echo "Installing Node.js dependencies..."
       - npm install
-
-      - echo "Ensuring ECR repository exists..."
-      - aws ecr describe-repositories --repository-names $IMAGE_REPO_NAME --region $AWS_REGION \
-        || aws ecr create-repository --repository-name $IMAGE_REPO_NAME --region $AWS_REGION
-
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-
       - echo "Building Docker image..."
       - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
       - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
@@ -52,15 +43,6 @@ phases:
     commands:
       - echo "Updating kubeconfig for EKS..."
       - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
-
-      - echo "Checking if deployment exists..."
-      - if kubectl get deployment node-mysql-deployment -n $K8S_NAMESPACE > /dev/null 2>&1; then \
-          echo "Deployment exists, updating image..."; \
-          kubectl set image deployment/node-mysql-deployment node-mysql-container=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n $K8S_NAMESPACE --record; \
-        else \
-          echo "Deployment does not exist, applying manifests..."; \
-          kubectl apply -f $DEPLOYMENT_FILE -n $K8S_NAMESPACE; \
-        fi
-
-      - echo "Verifying rollout..."
-      - kubectl rollout status deployment/node-mysql-deployment -n $K8S_NAMESPACE
+      - echo "Deploying to EKS..."
+      - kubectl set image deployment/node-mysql-deployment node-mysql-container=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG --record
+      - kubectl rollout status deployment/node-mysql-deployment
