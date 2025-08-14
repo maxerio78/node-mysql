@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: node-mysql-deployment
+  labels:
+    app: node-mysql
 spec:
   replicas: 2
   selector:
@@ -13,7 +15,15 @@ spec:
         app: node-mysql
     spec:
       containers:
-      - name: node-mysql-container
+      - name: node-mysql-container # ต้องตรงกับ buildspec.yml
         image: 058264398861.dkr.ecr.us-east-1.amazonaws.com/node-mysql:latest
         ports:
         - containerPort: 3000
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+
