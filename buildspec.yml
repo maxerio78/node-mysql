@@ -2,10 +2,11 @@ version: 0.2
 
 env:
   variables:
-    CLUSTER_NAME: "trial-dev-eksdemo1"         # Replace with your EKS cluster name
-    AWS_REGION: "us-east-1"           # Replace with your AWS region
-    IMAGE_REPO_NAME: "node-mysql"          # ECR repo name
-    IMAGE_TAG: "latest"                    # Can be a commit hash for versioning
+    CLUSTER_NAME: "trial-dev-eksdemo1"          # ชื่อ EKS cluster
+    AWS_REGION: "us-east-1"            # Region ที่ใช้
+    IMAGE_REPO_NAME: "node-mysql"           # ชื่อ ECR repository
+    IMAGE_TAG: "latest"                     # หรือใช้ commit hash: CODEBUILD_RESOLVED_SOURCE_VERSION
+    ACCOUNT_ID: "058264398861"               # AWS Account ID ของคุณ
 
 phases:
   install:
@@ -14,10 +15,11 @@ phases:
     commands:
       - echo "Installing dependencies..."
       - npm install
-      - echo "Installing AWS CLI v2 and kubectl"
+      - echo "Installing AWS CLI v2..."
       - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
       - unzip awscliv2.zip
       - sudo ./aws/install
+      - echo "Installing kubectl..."
       - curl -o kubectl https://amazon-eks.s3.$AWS_REGION.amazonaws.com/$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)/2025-01-17/bin/linux/amd64/kubectl
       - chmod +x ./kubectl
       - mv ./kubectl /usr/local/bin/
@@ -39,9 +41,12 @@ phases:
     commands:
       - echo "Updating kubeconfig for EKS..."
       - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
-      - echo "Deploying to EKS..."
-      - kubectl set image deployment/node-mysql-deployment node-mysql-container=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
-      - kubectl apply -f k8s/
+      - echo "Deploying new image to EKS..."
+      - kubectl set image deployment/node-mysql-deployment \
+          node-mysql-container=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG \
+          --record
+      - echo "Verifying deployment..."
+      - kubectl rollout status deployment/node-mysql-deployment
 
 artifacts:
   files:
