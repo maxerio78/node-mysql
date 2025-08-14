@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: node-mysql-container
-        image: 058264398861.dkr.ecr.us-east-1.amazonaws.com/node-mysql
+        image: 058264398861.dkr.ecr.us-east-1.amazonaws.com/node-mysql:latest
         ports:
         - containerPort: 3000
