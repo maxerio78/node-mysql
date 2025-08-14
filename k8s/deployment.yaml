@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-mysql-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: node-mysql
+  template:
+    metadata:
+      labels:
+        app: node-mysql
+    spec:
+      containers:
+      - name: node-mysql-container
+        image: <ECR-IMAGE-URL>
+        ports:
+        - containerPort: 3000
