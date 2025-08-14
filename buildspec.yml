@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    CLUSTER_NAME: "trial-dev-eksdemo1"          # ชื่อ EKS cluster
+    CLUSTER_NAME: "cicd-k8s-cluster"          # ชื่อ EKS cluster
     AWS_REGION: "us-east-1"            # Region ที่ใช้
     IMAGE_REPO_NAME: "node-mysql"           # ชื่อ ECR repository
     IMAGE_TAG: "latest"                     # หรือใช้ commit hash: CODEBUILD_RESOLVED_SOURCE_VERSION
