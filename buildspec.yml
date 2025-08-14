@@ -45,12 +45,12 @@ phases:
       - echo "Updating kubeconfig for EKS..."
       - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
 
-      - echo "Checking deployment in default namespace..."
       - if kubectl get deployment node-mysql-deployment -n default >/dev/null 2>&1; then
           echo "Deployment found. Updating image...";
           CONTAINER_NAME=$(kubectl get deployment node-mysql-deployment -n default -o jsonpath='{.spec.template.spec.containers[0].name}');
+          echo "Detected container name: $CONTAINER_NAME";
           if [ -z "$CONTAINER_NAME" ]; then
-            echo "❌ No container name found in deployment spec"; exit 1;
+            echo "❌ No container name found in deployment spec. Please check deployment.yaml"; exit 1;
           fi;
           kubectl set image deployment/node-mysql-deployment ${CONTAINER_NAME}=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n default --record;
         else
@@ -59,7 +59,10 @@ phases:
             echo "❌ Deployment file $DEPLOYMENT_FILE not found"; exit 1;
           fi;
           kubectl apply -f $DEPLOYMENT_FILE -n default;
+          if [ -f "$SERVICE_FILE" ]; then
+            kubectl apply -f $SERVICE_FILE -n default;
+          fi;
         fi
 
-      - echo "Waiting for rollout..."
+      - echo "Verifying rollout..."
       - kubectl rollout status deployment/node-mysql-deployment -n default
