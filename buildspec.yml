@@ -9,6 +9,7 @@ env:
     ACCOUNT_ID: "058264398861"               # AWS Account ID ของคุณ
     K8S_NAMESPACE: "default"                 # Namespace ใน Kubernetes
     DEPLOYMENT_FILE: "k8s/deployment.yaml"   # ไฟล์ manifests ของ Deployment
+    KUBECTL_RELEASE_DATE: "2023-11-14" # ต้องตรงกับเวอร์ชัน EKS ใน AWS Docs
 
 phases:
   install:
@@ -44,14 +45,19 @@ phases:
       - echo "Updating kubeconfig for EKS..."
       - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
 
-      - echo "Checking if deployment exists..."
-      - if kubectl get deployment node-mysql-deployment -n $K8S_NAMESPACE > /dev/null 2>&1; then \
+      - echo "Checking if deployment exists in default namespace..."
+      - if kubectl get deployment node-mysql-deployment -n default >/dev/null 2>&1; then \
           echo "Updating existing deployment image..."; \
-          kubectl set image deployment/node-mysql-deployment node-mysql-container=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n $K8S_NAMESPACE --record; \
+          CONTAINER_NAME=$(kubectl get deployment node-mysql-deployment -n default -o jsonpath='{.spec.template.spec.containers[0].name}'); \
+          kubectl set image deployment/node-mysql-deployment ${CONTAINER_NAME}=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n default --record; \
         else \
-          echo "Deployment not found. Creating new deployment..."; \
-          kubectl apply -f $DEPLOYMENT_FILE -n $K8S_NAMESPACE; \
+          echo "Deployment not found in default namespace. Creating new deployment..."; \
+          if [ -f "$DEPLOYMENT_FILE" ]; then \
+            kubectl apply -f $DEPLOYMENT_FILE -n default; \
+          else \
+            echo "❌ Deployment file $DEPLOYMENT_FILE not found!"; exit 1; \
+          fi; \
         fi
 
       - echo "Verifying rollout..."
-      - kubectl rollout status deployment/node-mysql-deployment -n $K8S_NAMESPACE
+      - kubectl rollout status deployment/node-mysql-deployment -n default
