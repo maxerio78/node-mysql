@@ -45,19 +45,21 @@ phases:
       - echo "Updating kubeconfig for EKS..."
       - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
 
-      - echo "Checking if deployment exists in default namespace..."
-      - if kubectl get deployment node-mysql-deployment -n default >/dev/null 2>&1; then \
-          echo "Updating existing deployment image..."; \
-          CONTAINER_NAME=$(kubectl get deployment node-mysql-deployment -n default -o jsonpath='{.spec.template.spec.containers[0].name}'); \
-          kubectl set image deployment/node-mysql-deployment ${CONTAINER_NAME}=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n default --record; \
-        else \
-          echo "Deployment not found in default namespace. Creating new deployment..."; \
-          if [ -f "$DEPLOYMENT_FILE" ]; then \
-            kubectl apply -f $DEPLOYMENT_FILE -n default; \
-          else \
-            echo "❌ Deployment file $DEPLOYMENT_FILE not found!"; exit 1; \
-          fi; \
+      - echo "Checking deployment in default namespace..."
+      - if kubectl get deployment node-mysql-deployment -n default >/dev/null 2>&1; then
+          echo "Deployment found. Updating image...";
+          CONTAINER_NAME=$(kubectl get deployment node-mysql-deployment -n default -o jsonpath='{.spec.template.spec.containers[0].name}');
+          if [ -z "$CONTAINER_NAME" ]; then
+            echo "❌ No container name found in deployment spec"; exit 1;
+          fi;
+          kubectl set image deployment/node-mysql-deployment ${CONTAINER_NAME}=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n default --record;
+        else
+          echo "Deployment not found. Creating from YAML...";
+          if [ ! -f "$DEPLOYMENT_FILE" ]; then
+            echo "❌ Deployment file $DEPLOYMENT_FILE not found"; exit 1;
+          fi;
+          kubectl apply -f $DEPLOYMENT_FILE -n default;
         fi
 
-      - echo "Verifying rollout..."
+      - echo "Waiting for rollout..."
       - kubectl rollout status deployment/node-mysql-deployment -n default
