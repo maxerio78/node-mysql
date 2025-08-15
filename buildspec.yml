@@ -20,10 +20,16 @@ phases:
       - node -v
       - npm -v
       - aws --version
-      - echo "Installing kubectl..."
-      - curl -o kubectl https://amazon-eks.s3.$AWS_REGION.amazonaws.com/$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)/2025-01-17/bin/linux/amd64/kubectl
-      - chmod +x ./kubectl
-      - mv ./kubectl /usr/local/bin/
+      - echo "Installing kubectl from us-west-2 (official EKS bucket)..."
+      - 'K8S_VER=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)'
+      - 'KUBE_URL="https://s3.us-west-2.amazonaws.com/amazon-eks/${K8S_VER}/2025-01-17/bin/linux/amd64/kubectl"'
+      - 'echo "Downloading: ${KUBE_URL}"'
+      - 'curl -fL -o /usr/local/bin/kubectl "${KUBE_URL}"'
+      - 'chmod +x /usr/local/bin/kubectl'
+      # ตรวจว่าเป็นไบนารีจริง (ไม่ใช่ XML/HTML)
+      - 'file /usr/local/bin/kubectl | grep -qi "ELF 64-bit" || (echo "kubectl download looks invalid"; head -n 2 /usr/local/bin/kubectl; exit 1)'
+      - 'kubectl version --client --output=yaml || (echo "kubectl not working"; exit 1)'
+
 
   pre_build:
     commands:
