@@ -2,14 +2,14 @@ version: 0.2
 
 env:
   variables:
-    CLUSTER_NAME: "cicd-k8s-cluster"          # ชื่อ EKS cluster
+    CLUSTER_NAME: "devops-k8s-cluster"          # ชื่อ EKS cluster
     AWS_REGION: "us-east-1"            # Region ที่ใช้
     IMAGE_REPO_NAME: "node-mysql"           # ชื่อ ECR repository
     IMAGE_TAG: "latest"                     # หรือใช้ commit hash: CODEBUILD_RESOLVED_SOURCE_VERSION
-    ACCOUNT_ID: "058264398861"               # AWS Account ID ของคุณ
+    ACCOUNT_ID: "399423262543"               # AWS Account ID ของคุณ
     K8S_NAMESPACE: "default"                 # Namespace ใน Kubernetes
     DEPLOYMENT_FILE: "k8s/deployment.yaml"   # ไฟล์ manifests ของ Deployment
-    KUBECTL_RELEASE_DATE: "2023-11-14" # ต้องตรงกับเวอร์ชัน EKS ใน AWS Docs
+    KUBECTL_RELEASE_DATE: "2023-11-15" # ต้องตรงกับเวอร์ชัน EKS ใน AWS Docs
 
 phases:
   install:
