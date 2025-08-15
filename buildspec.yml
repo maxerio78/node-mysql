@@ -2,28 +2,31 @@ version: 0.2
 
 env:
   variables:
-    CLUSTER_NAME: "cluster-k8s-devops"          # ชื่อ EKS cluster
-    AWS_REGION: "us-east-1"            # Region ที่ใช้
-    IMAGE_REPO_NAME: "node-mysql"           # ชื่อ ECR repository
-    IMAGE_TAG: "latest"                     # หรือใช้ commit hash: CODEBUILD_RESOLVED_SOURCE_VERSION
-    ACCOUNT_ID: "399423262543"               # AWS Account ID ของคุณ
-    K8S_NAMESPACE: "default"                 # Namespace ใน Kubernetes
-    DEPLOYMENT_FILE: "k8s/deployment.yaml"   # ไฟล์ manifests ของ Deployment
-    KUBECTL_RELEASE_DATE: "2023-11-16" # ต้องตรงกับเวอร์ชัน EKS ใน AWS Docs
+    CLUSTER_NAME: "cluster-k8s-devops"
+    AWS_REGION: "us-east-1"
+    IMAGE_REPO_NAME: "node-mysql"
+    IMAGE_TAG: "latest"
+    ACCOUNT_ID: "399423262543"
+    K8S_NAMESPACE: "default"
+    DEPLOYMENT_FILE: "k8s/deployment.yaml"
+    SERVICE_FILE: "k8s/service.yaml"
+    K8S_VERSION: "1.29.6"
+    KUBECTL_RELEASE_DATE: "2025-01-17"
 
 phases:
   install:
     runtime-versions:
       nodejs: 18
     commands:
+      - set -euo pipefail
       - echo "Checking versions..."
       - node -v
       - npm -v
       - aws --version
-      - echo "Installing kubectl..."
-      - curl -o kubectl https://amazon-eks.s3.$AWS_REGION.amazonaws.com/$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)/2025-01-17/bin/linux/amd64/kubectl
-      - chmod +x ./kubectl
-      - mv ./kubectl /usr/local/bin/
+      - echo "Installing kubectl ${K8S_VERSION} (${KUBECTL_RELEASE_DATE}) ..."
+      - curl -Lo /usr/local/bin/kubectl "https://s3.us-west-2.amazonaws.com/amazon-eks/${K8S_VERSION}/${KUBECTL_RELEASE_DATE}/bin/linux/amd64/kubectl"
+      - chmod +x /usr/local/bin/kubectl
+      - kubectl version --client --output=yaml || true
 
   pre_build:
     commands:
@@ -40,30 +43,15 @@ phases:
       - echo "Pushing Docker image to ECR..."
       - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
 
-post_build:
-  commands:
-    - echo "Updating kubeconfig for EKS..."
-    - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
-    - |
-      if kubectl get deployment node-mysql-deployment -n default >/dev/null 2>&1; then
-        echo "Deployment found. Updating image..."
-        CONTAINER_NAME=$(kubectl get deployment node-mysql-deployment -n default -o jsonpath='{.spec.template.spec.containers[0].name}')
-        echo "Detected container name: $CONTAINER_NAME"
-        if [ -z "$CONTAINER_NAME" ]; then
-          echo "❌ No container name found in deployment spec"
-          exit 1
-        fi
-        kubectl set image deployment/node-mysql-deployment ${CONTAINER_NAME}=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n default --record
-      else
-        echo "Deployment not found. Creating from YAML..."
-        if [ ! -f "$DEPLOYMENT_FILE" ]; then
-          echo "❌ Deployment file $DEPLOYMENT_FILE not found"
-          exit 1
-        fi
-        kubectl apply -f $DEPLOYMENT_FILE -n default
-        if [ -f "$SERVICE_FILE" ]; then
-          kubectl apply -f $SERVICE_FILE -n default
-        fi
-      fi
-    - echo "Verifying rollout..."
-    - kubectl rollout status deployment/node-mysql-deployment -n default
+  post_build:
+    commands:
+      - echo "Updating kubeconfig for EKS..."
+      - aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+      - echo "Deploying to Kubernetes namespace: ${K8S_NAMESPACE}"
+      - bash -ec 'if kubectl get deployment node-mysql-deployment -n ${K8S_NAMESPACE} >/dev/null 2>&1; then echo "Deployment found. Updating image..."; CONTAINER_NAME=$(kubectl get deployment node-mysql-deployment -n ${K8S_NAMESPACE} -o jsonpath="{.spec.template.spec.containers[0].name}"); echo "Detected container name: ${CONTAINER_NAME}"; if [ -z "${CONTAINER_NAME}" ]; then echo "No container name found in deployment spec"; exit 1; fi; kubectl set image deployment/node-mysql-deployment ${CONTAINER_NAME}=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n ${K8S_NAMESPACE} --record; else echo "Deployment not found. Applying manifests..."; if [ ! -f "$DEPLOYMENT_FILE" ]; then echo "Deployment file $DEPLOYMENT_FILE not found"; exit 1; fi; kubectl apply -f "$DEPLOYMENT_FILE" -n ${K8S_NAMESPACE}; if [ -f "$SERVICE_FILE" ]; then kubectl apply -f "$SERVICE_FILE" -n ${K8S_NAMESPACE}; fi; fi'
+      - echo "Verifying rollout..."
+      - kubectl rollout status deployment/node-mysql-deployment -n ${K8S_NAMESPACE}
+
+artifacts:
+  files:
+    - '**/*'\n
