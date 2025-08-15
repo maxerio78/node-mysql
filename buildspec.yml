@@ -21,13 +21,13 @@ phases:
       - "node -v"
       - "npm -v"
       - "aws --version"
-      - "echo Installing kubectl (try EKS S3, fallback to dl.k8s.io)..."
+      - "echo Installing kubectl (EKS S3 with fallback to dl.k8s.io)..."
       - 'K8S_VER=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)'
       - 'EKS_DATE=${EKS_RELEASE_DATE}'
       - 'KUBE_URL_AWS="https://s3.us-west-2.amazonaws.com/amazon-eks/${K8S_VER}/${EKS_DATE}/bin/linux/amd64/kubectl"'
       - 'KUBE_URL_UP="https://dl.k8s.io/release/v${K8S_VER}.0/bin/linux/amd64/kubectl"'
       - 'echo "Trying: ${KUBE_URL_AWS}"'
-      - 'if curl -sIf "${KUBE_URL_AWS}" > /dev/null; then echo "Downloading from EKS S3..."; curl -fL -o /usr/local/bin/kubectl "${KUBE_URL_AWS}"; else echo "EKS S3 not found for ${K8S_VER}, fallback to upstream: ${KUBE_URL_UP}"; curl -fL -o /usr/local/bin/kubectl "${KUBE_URL_UP}"; fi'
+      - 'if curl -sIf "${KUBE_URL_AWS}" > /dev/null; then echo "Downloading from EKS S3..."; curl -fL -o /usr/local/bin/kubectl "${KUBE_URL_AWS}"; else echo "EKS S3 not found for ${K8S_VER}, fallback to ${KUBE_URL_UP}"; curl -fL -o /usr/local/bin/kubectl "${KUBE_URL_UP}"; fi'
       - 'chmod +x /usr/local/bin/kubectl'
       - 'file /usr/local/bin/kubectl | grep -qi "ELF 64-bit" || (echo "kubectl download looks invalid"; head -n 2 /usr/local/bin/kubectl; exit 1)'
       - 'kubectl version --client --output=yaml || (echo "kubectl not working"; exit 1)'
@@ -51,7 +51,10 @@ phases:
     commands:
       - "echo Updating kubeconfig for EKS..."
       - "aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION"
-      - "echo Deploying to Kubernetes namespace: ${K8S_NAMESPACE}"
-      - 'bash -ec '\''if kubectl get deployment node-mysql-deployment -n ${K8S_NAMESPACE} >/dev/null 2>&1; then echo "Deployment found. Updating image..."; CONTAINER_NAME=$(kubectl get deployment node-mysql-deployment -n ${K8S_NAMESPACE} -o jsonpath="{.spec.template.spec.containers[0].name}"); echo "Detected container name: ${CONTAINER_NAME}"; if [ -z "${CONTAINER_NAME}" ]; then echo "No container name found in deployment spec"; exit 1; fi; kubectl set image deployment/node-mysql-deployment ${CONTAINER_NAME}=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG -n ${K8S_NAMESPACE} --record; else echo "Deployment not found. Applying manifests..."; if [ ! -f "$DEPLOYMENT_FILE" ]; then echo "Deployment file $DEPLOYMENT_FILE not found"; exit 1; fi; kubectl apply -f "$DEPLOYMENT_FILE" -n ${K8S_NAMESPACE}; if [ -f "$SERVICE_FILE" ]; then kubectl apply -f "$SERVICE_FILE" -n ${K8S_NAMESPACE}; fi; fi'\'''
-      - "echo Verifying rollout..."
-      - "kubectl rollout status deployment/node-mysql-deployment -n ${K8S_NAMESPACE}"
+      - "echo Deploying..."
+      - "bash scripts/deploy.sh"
+      - "echo Done."
+
+artifacts:
+  files:
+    - "**/*"
