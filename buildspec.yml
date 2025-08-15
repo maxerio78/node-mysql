@@ -22,7 +22,7 @@ phases:
       - "node -v"
       - "npm -v"
       - "aws --version"
-      - "echo Installing kubectl (EKS S3 with fallback to dl.k8s.io)..."
+      - 'echo "Installing kubectl (EKS S3 with fallback to dl.k8s.io)..."'
       - 'K8S_VER=$(aws eks describe-cluster --name $CLUSTER_NAME --region $AWS_REGION --query "cluster.version" --output text)'
       - 'echo Detected cluster.version: ${K8S_VER}'
       - 'EKS_DATE=${EKS_RELEASE_DATE}'
@@ -33,6 +33,7 @@ phases:
       - 'chmod +x /usr/local/bin/kubectl'
       - 'file /usr/local/bin/kubectl | grep -qi "ELF 64-bit" || (echo "kubectl download looks invalid"; head -n 2 /usr/local/bin/kubectl; exit 1)'
       - 'kubectl version --client --output=yaml || (echo "kubectl not working"; exit 1)'
+      
 
   pre_build:
     commands:
