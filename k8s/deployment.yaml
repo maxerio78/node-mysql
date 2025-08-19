@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: node-mysql-container # ต้องตรงกับ buildspec.yml
-        image: 399423262543.dkr.ecr.us-east-1.amazonaws.com/node-mysql:latest
+        image: 432637347995.dkr.ecr.ap-southeast-1.amazonaws.com/node-mysql:latest
         ports:
         - containerPort: 3000
         resources:
