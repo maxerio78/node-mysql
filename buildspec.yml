@@ -2,15 +2,15 @@ version: 0.2
 
 env:
   variables:
-    CLUSTER_NAME: "cluster-k8s-devops"
-    AWS_REGION: "us-east-1"
+    CLUSTER_NAME: "Sun-Series-Travel-Prod"
+    AWS_REGION: "ap-southeast-1"
     IMAGE_REPO_NAME: "node-mysql"
     IMAGE_TAG: "latest"                  # แนะนำ: ใช้ $CODEBUILD_RESOLVED_SOURCE_VERSION แทนเพื่อ tag ตาม commit
-    ACCOUNT_ID: "399423262543"
+    ACCOUNT_ID: "432637347995"
     K8S_NAMESPACE: "default"
     DEPLOYMENT_FILE: "k8s/deployment.yaml"
     SERVICE_FILE: "k8s/service.yaml"
-    EKS_RELEASE_DATE: "2025-01-17"
+    EKS_RELEASE_DATE: "2025-01-19"
 
 phases:
   install:
